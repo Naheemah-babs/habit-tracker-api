@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 import { protect } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { requireAdmin } from '../middleware/admin.js';
+import { requireVerified } from '../middleware/requireVerified.js';
 import { getUsersNeedingReminders } from '../utils/reminderQuery.js';
 import { sendReminderEmail } from '../utils/email.js';
 import {
@@ -10,11 +11,12 @@ import {
   getHabits,
   getHabitById,
   deleteHabit,
-} from '../controller/habits.controller.js';
+} from '../controller/habits.controller.js'; 
 
 const router = Router();
 
-router.use(protect); 
+router.use(protect);
+router.use(requireVerified);
 
 router.post(
   '/',

@@ -22,3 +22,19 @@ export async function sendReminderEmail(toEmail, userName, habitNames) {
 
   return { success: !error, email: toEmail, error: error?.message };
 }
+
+export async function sendVerificationEmail(toEmail, userName, verificationLink) {
+  const { data, error } = await resend.emails.send({
+    from: 'Habit Tracker <onboarding@resend.dev>',
+    to: toEmail,
+    subject: 'Verify your email',
+    html: `
+      <p>Hi ${userName || 'there'},</p>
+      <p>Thanks for signing up. Please verify your email by clicking the link below:</p>
+      <p><a href="${verificationLink}">${verificationLink}</a></p>
+      <p>This link expires in 24 hours.</p>
+    `,
+  });
+
+  return { success: !error, email: toEmail, error: error?.message };
+}

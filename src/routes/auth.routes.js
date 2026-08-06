@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { register, login } from '../controller/auth.controller.js';
+import { register, login, verifyEmail } from '../controller/auth.controller.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
@@ -15,6 +15,8 @@ router.post(
   validate,
   register
 );
+
+router.get('/verify', verifyEmail);
 
 router.post(
   '/login',
