@@ -6,6 +6,7 @@ A production-track REST API for tracking daily habits and calculating streaks, b
 
 - **Authentication** — JWT-based auth with bcrypt password hashing
 - **Email verification** — new accounts must verify their email (via a Resend-sent link) before they can create or log habits
+- **Password reset** — users can request a reset link via email; resetting requires a valid, unexpired token and never reveals whether a given email is registered
 - **Habit tracking** — create, list, view, and delete personal habits
 - **Streak logic** — automatically calculates current and longest streaks based on daily logs, correctly handling first-time logs, same-day duplicates, consecutive-day continuation, and streak resets after a missed day
 - **Concurrency-safe logging** — habit logs are written inside a database transaction with row-level locking (`SELECT ... FOR UPDATE`) to prevent race conditions on rapid duplicate requests, backed by a `UNIQUE(habit_id, logged_date)` database constraint as a final safety net
@@ -104,6 +105,8 @@ Server runs on `http://localhost:5000` by default.
 | POST | `/api/auth/register` | Register a new user, sends a verification email |
 | GET | `/api/auth/verify?token=...` | Verify email using the token from the verification email |
 | POST | `/api/auth/login` | Log in and receive a JWT |
+| POST | `/api/auth/forgot-password` | Request a password reset link (always returns a generic success message, regardless of whether the email exists) |
+| POST | `/api/auth/reset-password` | Reset password using a valid token and new password |
 
 ### Habits *(requires auth + verified email)*
 
@@ -152,7 +155,7 @@ Each habit stores `current_streak`, `longest_streak`, and `last_logged_date` dir
 
 ## Database Schema
 
-**users** — `id (UUID)`, `email`, `password_hash`, `name`, `role`, `email_verified`, `verification_token`, `verification_token_expires`, `created_at`
+**users** — `id (UUID)`, `email`, `password_hash`, `name`, `role`, `email_verified`, `verification_token`, `verification_token_expires`, `reset_token`, `reset_token_expires`, `created_at`
 
 **habits** — `id (UUID)`, `user_id (FK → users, cascade delete)`, `name`, `current_streak`, `longest_streak`, `last_logged_date`, `created_at`
 

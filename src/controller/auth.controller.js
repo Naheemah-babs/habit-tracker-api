@@ -4,6 +4,7 @@ import pool from '../config/db.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { generateVerificationToken } from '../utils/token.js';
 import { sendVerificationEmail } from '../utils/email.js';
+import { sendPasswordResetEmail } from '../utils/email.js';
 
 const SALT_ROUNDS = 10;
 
@@ -112,6 +113,82 @@ export async function verifyEmail(req, res, next) {
     );
 
     res.status(200).json({ success: true, message: 'Email verified successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.body;
+
+    const result = await pool.query('SELECT id, name FROM users WHERE email = $1', [email]);
+
+    const genericResponse = {
+      success: true,
+      message: 'If that email is registered, a password reset link has been sent.',
+    };
+
+    if (result.rows.length === 0) {
+      return res.status(200).json(genericResponse);
+    }
+
+    const user = result.rows[0];
+    const resetToken = generateVerificationToken();
+    const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
+
+    await pool.query(
+      `UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE id = $3`,
+      [resetToken, resetExpires, user.id]
+    );
+
+    const resetLink = `${process.env.APP_BASE_URL}/api/auth/reset-password?token=${resetToken}`;
+    const emailResult = await sendPasswordResetEmail(email, user.name, resetLink);
+
+    // include emailSent for our own testing visibility — same pattern as register()
+    res.status(200).json({ ...genericResponse, emailSent: emailResult.success });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(req, res, next) {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return next(new AppError('Token and new password are required', 400));
+    }
+
+    if (newPassword.length < 6) {
+      return next(new AppError('Password must be at least 6 characters', 400));
+    }
+
+    const result = await pool.query(
+      `SELECT id, reset_token_expires FROM users WHERE reset_token = $1`,
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return next(new AppError('Invalid or expired reset token', 400));
+    }
+
+    const user = result.rows[0];
+
+    if (new Date(user.reset_token_expires) < new Date()) {
+      return next(new AppError('Reset token has expired', 400));
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    await pool.query(
+      `UPDATE users 
+       SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL
+       WHERE id = $2`,
+      [passwordHash, user.id]
+    );
+
+    res.status(200).json({ success: true, message: 'Password reset successfully' });
   } catch (err) {
     next(err);
   }

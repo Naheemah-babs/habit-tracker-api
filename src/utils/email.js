@@ -38,3 +38,18 @@ export async function sendVerificationEmail(toEmail, userName, verificationLink)
 
   return { success: !error, email: toEmail, error: error?.message };
 }
+export async function sendPasswordResetEmail(toEmail, userName, resetLink) {
+  const { data, error } = await resend.emails.send({
+    from: 'Habit Tracker <onboarding@resend.dev>',
+    to: toEmail,
+    subject: 'Reset your password',
+    html: `
+      <p>Hi ${userName || 'there'},</p>
+      <p>We received a request to reset your password. Click the link below to choose a new one:</p>
+      <p><a href="${resetLink}">${resetLink}</a></p>
+      <p>This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+    `,
+  });
+
+  return { success: !error, email: toEmail, error: error?.message };
+}
